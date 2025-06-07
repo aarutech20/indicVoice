@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  dubsync:
+    build: .
+    container_name: dubsync-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - /dev/snd:/dev/snd  # Audio device access
+    devices:
+      - /dev/snd  # Audio devices
+    environment:
+      - PYTHONPATH=/app
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: GPU-enabled version
+  dubsync-gpu:
+    build: .
+    container_name: dubsync-app-gpu
+    ports:
+      - "8502:8501"
+    volumes:
+      - .:/app
+      - /dev/snd:/dev/snd
+    devices:
+      - /dev/snd
+    environment:
+      - PYTHONPATH=/app
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    profiles:
+      - gpu
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: dubsync-network
